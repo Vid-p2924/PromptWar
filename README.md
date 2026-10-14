@@ -26,6 +26,17 @@ Nobody is at fault — the caller can't help being panicked and unilingual, the 
 
 ---
 
+## How BOL answers the challenge
+
+| Challenge criterion | Where BOL delivers |
+|---|---|
+| Real-world problem | Emergency calls lost in translation — measurable, life-or-death, overlooked |
+| AI / intelligent automation | One engineered Gemini triage prompt + strict JSON schema, not a chatbot |
+| Impact on everyday life | First 60 seconds of every emergency call, across 11 languages |
+| Accessibility & inclusive communities | First aid read aloud in the caller's own language; works without a smartphone app |
+| Public safety & emergency response | Dispatch-ready handoff card for ambulance / fire / police operators |
+| Responsible AI | Over-triage rubric, no invented locations or victims, confidence caps, bystander safety rules |
+
 ## What BOL does
 
 Listens to the raw call → extracts a structured triage card → hands it to the operator, and reads first aid back **in the caller's own language**.

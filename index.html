@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="referrer" content="no-referrer" />
 <title>BOL — Multilingual AI Triage for Emergency Dispatch</title>
 <meta name="description" content="BOL turns a panicked, multilingual emergency call into a dispatch-ready triage card in under 3 seconds." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -46,8 +47,8 @@
     <div class="panel-head">
       <span class="label">CALLER TRANSCRIPT</span>
       <div class="rec">
-        <button id="micBtn" class="mic" title="Speak the call">●</button>
-        <select id="speechLang" title="Caller language">
+        <button id="micBtn" class="mic" title="Speak the call" aria-label="Start voice capture of the emergency call">●</button>
+        <select id="speechLang" title="Caller language" aria-label="Language to capture with the microphone">
           <option value="te-IN">తెలుగు · te</option>
           <option value="hi-IN">हिन्दी · hi</option>
           <option value="en-IN" selected>English · en</option>
@@ -63,7 +64,7 @@
       </div>
     </div>
 
-    <textarea id="transcript" spellcheck="false" placeholder="Paste or speak the raw emergency call. Code-mixed, fragmented, panicked — that is the point."></textarea>
+    <textarea id="transcript" spellcheck="false" aria-label="Emergency call transcript" placeholder="Paste or speak the raw emergency call. Code-mixed, fragmented, panicked — that is the point."></textarea>
 
     <div class="scripted">
       <span class="label">SCRIPTED CALLS</span>
@@ -71,7 +72,7 @@
     </div>
 
     <div class="actions">
-      <button id="dispatchBtn" class="primary">DISPATCH ▸</button>
+      <button id="dispatchBtn" class="primary" aria-label="Run AI triage on the transcript">DISPATCH ▸</button>
       <button id="reelBtn" class="secondary">▶ Run demo reel</button>
       <button id="clearBtn" class="ghostbtn">clear</button>
     </div>
@@ -85,12 +86,12 @@
     </div>
 
     <div id="emptyState" class="empty">
-      <div class="cross">+</div>
+      <div class="cross" aria-hidden="true">+</div>
       <p>AWAITING CALL</p>
       <span>select a scripted call or press the mic</span>
     </div>
 
-    <div id="card" class="card" hidden>
+    <div id="card" class="card" role="region" aria-label="Dispatch card" aria-live="polite" hidden>
       <div class="sev" id="sevBanner">
         <span class="sevDot"></span>
         <span id="sevText">CRITICAL</span>
@@ -169,7 +170,7 @@
   </div>
 </footer>
 
-<div class="modal" id="settings" hidden>
+<div class="modal" id="settings" role="dialog" aria-modal="true" aria-label="Gemini API key settings" hidden>
   <div class="sheet">
     <div class="panel-head"><span class="label">GEMINI API KEY</span><button class="ghost" id="closeSettings">✕</button></div>
     <p class="sub2">Stored in <code>sessionStorage</code> only — never committed, never sent anywhere except Google's API. Get a free key at
@@ -183,7 +184,7 @@
   </div>
 </div>
 
-<div class="toast" id="toast" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="fixtures.js"></script>
 <script src="app.js"></script>

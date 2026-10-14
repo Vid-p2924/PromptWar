@@ -37,8 +37,21 @@ for (const f of FIXTURES) {
 }
 
 const app = fs.readFileSync(__dirname + "/app.js", "utf8");
+const html = fs.readFileSync(__dirname + "/index.html", "utf8");
+const css = fs.readFileSync(__dirname + "/style.css", "utf8");
+
 if (!app.includes("responseSchema")) fail("app.js does not send responseSchema");
 if (!app.includes("sessionStorage")) fail("app.js does not use sessionStorage for the key");
+if (!app.includes("AbortController")) fail("no request timeout on the Gemini call");
+if (!app.includes("clearTimeout(timer)")) fail("timeout timer not cleared after fetch");
+if (!app.includes("const d = lastCard")) fail("dispatch card state leaks onto window");
+if (/on(load|error|click|input|change|submit)\s*=/.test(html)) fail("inline event handlers in index.html");
+if (!html.includes('name="referrer"')) fail("missing referrer meta");
+if (!html.includes('aria-live="polite"')) fail("dispatch card is not announced to screen readers");
+if (!/prefers-reduced-motion/.test(css)) fail("no reduced-motion support");
+if (!app.includes("HIGHER")) fail("over-triage rule missing from the prompt");
+if (!app.includes("NEVER invent")) fail("no-imagined-location rule missing from the prompt");
+if (new Set(FIXTURES.map((f) => f.input)).size !== FIXTURES.length) fail("duplicate transcripts in fixtures");
 if (/AIza[A-Za-z0-9_\-]{20,}/.test(app + src + fs.readFileSync(__dirname + "/index.html", "utf8"))) fail("an API key looks committed in source");
 
 console.log("\n" + (fails ? fails + " CHECK(S) FAILED" : "ALL CHECKS PASSED · " + FIXTURES.length + " fixtures"));

@@ -91,6 +91,17 @@ const el = {
 
 let selectedFixture = null;
 let busy = false;
+let lastCard = null;
+let chipButtons = [];
+let voiceCache = [];
+
+function setActiveChip(index) {
+  chipButtons.forEach((c, n) => c.classList.toggle("active", n === index));
+}
+function clearActiveChips() { setActiveChip(-1); }
+function loadVoices() {
+  if (window.speechSynthesis) voiceCache = speechSynthesis.getVoices() || [];
+}
 
 function getKey() { return store.get("GEMINI_KEY"); }
 function setMode() {
@@ -110,6 +121,7 @@ function toast(msg, ok) {
   toast.t = setTimeout(() => (el.toast.hidden = true), 4200);
 }
 function readableErr(m) {
+  if (/abort/i.test(m)) return "request timed out after 30s — check your connection and retry.";
   if (/Failed to fetch|NetworkError/i.test(m)) return "can't reach the Gemini API — check your internet or proxy, then retry.";
   const i = String(m).indexOf("{");
   if (i === -1) return m;
@@ -129,11 +141,12 @@ function buildChips() {
     b.onclick = () => {
       selectedFixture = f.id;
       el.transcript.value = f.input;
-      [...el.chips.children].forEach((c) => c.classList.remove("active"));
+      clearActiveChips();
       b.classList.add("active");
       render(f.out, { source: "RECORDED", latency: f.latency_ms, lang: f.out.language });
     };
     el.chips.appendChild(b);
+    chipButtons.push(b);
   });
 }
 
@@ -186,7 +199,7 @@ function render(d, meta) {
   el.meta.textContent = `${meta.source} · ${secs}`;
   $("footMeta").textContent = `${MODEL.toUpperCase()} · SCHEMA-VALID · ${meta.source}`;
   el.card.dataset.handoff = handoffText(d);
-  window.__lastCard = d;
+  lastCard = d;
 }
 
 function handoffText(d) {
@@ -215,20 +228,28 @@ function escapeHtml(s) {
 }
 
 async function callGemini(text) {
-  const res = await fetch(ENDPOINT + "?key=" + encodeURIComponent(getKey()), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-      contents: [{ role: "user", parts: [{ text: "CALL TRANSCRIPT:\n" + text }] }],
-      generationConfig: {
-        temperature: 0.35,
-        maxOutputTokens: 4096,
-        responseMimeType: "application/json",
-        responseSchema: RESPONSE_SCHEMA
-      }
-    })
-  });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 30000);
+  let res;
+  try {
+    res = await fetch(ENDPOINT + "?key=" + encodeURIComponent(getKey()), {
+      signal: ctrl.signal,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ role: "user", parts: [{ text: "CALL TRANSCRIPT:\n" + text }] }],
+        generationConfig: {
+          temperature: 0.35,
+          maxOutputTokens: 4096,
+          responseMimeType: "application/json",
+          responseSchema: RESPONSE_SCHEMA
+        }
+      })
+    });
+  } finally {
+    clearTimeout(timer);
+  }
   if (!res.ok) {
     const err = await res.text();
     throw new Error(res.status + " · " + short(err, 160));
@@ -285,7 +306,7 @@ async function runReel() {
     const f = FIXTURES[i++];
     selectedFixture = f.id;
     el.transcript.value = f.input;
-    [...el.chips.children].forEach((c, n) => c.classList.toggle("active", n === i - 1));
+    setActiveChip(i - 1);
     render(f.out, { source: "RECORDED", latency: f.latency_ms });
     reelTimer = setTimeout(tick, 4200);
   };
@@ -314,7 +335,7 @@ function setupMic() {
     for (const r of e.results) (r.isFinal ? (final += r[0].transcript) : (interim += r[0].transcript));
     el.transcript.value = (base + " " + final + interim).trim();
     selectedFixture = null;
-    [...el.chips.children].forEach((c) => c.classList.remove("active"));
+    clearActiveChips();
   };
   let retryLang = null;
   const MIC_MSG = {
@@ -356,7 +377,7 @@ function setupMic() {
 function speakAid() {
   if (!window.speechSynthesis) { toast("Speech synthesis unavailable in this browser."); return; }
   speechSynthesis.cancel();
-  const d = window.__lastCard;
+  const d = lastCard;
   if (!d) return;
   const code = $("speakAid").dataset.code || "en-IN";
   const text = d.first_aid.map((s) => s.step_local).join(". ");
@@ -364,7 +385,7 @@ function speakAid() {
   u.lang = code;
   u.rate = 0.98;
   u.onerror = (ev) => { if (ev.error !== "interrupted" && ev.error !== "canceled") toast("Read-aloud failed — this device has no " + code + " voice. English text is shown below each step."); };
-  const voices = speechSynthesis.getVoices();
+  const voices = voiceCache.length ? voiceCache : (speechSynthesis.getVoices() || []);
   const v = voices.find((x) => x.lang === code) || voices.find((x) => x.lang && x.lang.startsWith(code.split("-")[0]));
   if (v) u.voice = v;
   speechSynthesis.speak(u);
@@ -398,12 +419,12 @@ function statusKey() {
 el.transcript.addEventListener("input", () => {
   if (el.transcript.value.trim() !== (FIXTURES.find((f) => f.id === selectedFixture)?.input || "")) {
     selectedFixture = null;
-    [...el.chips.children].forEach((c) => c.classList.remove("active"));
+    clearActiveChips();
   }
 });
 el.dispatch.onclick = dispatch;
 el.reel.onclick = () => (reelTimer ? stopReel() : runReel());
-el.clear.onclick = () => { stopReel(); el.transcript.value = ""; selectedFixture = null; [...el.chips.children].forEach((c) => c.classList.remove("active")); el.card.hidden = true; el.empty.hidden = false; el.meta.textContent = "—"; };
+el.clear.onclick = () => { stopReel(); el.transcript.value = ""; selectedFixture = null; clearActiveChips(); el.card.hidden = true; el.empty.hidden = false; el.meta.textContent = "—"; };
 $("speakAid").onclick = speakAid;
 $("copyBtn").onclick = copyHandoff;
 document.addEventListener("keydown", (e) => {
@@ -416,4 +437,5 @@ setupMic();
 setupSettings();
 setMode();
 statusKey();
-if (window.speechSynthesis) speechSynthesis.getVoices();
+loadVoices();
+if (window.speechSynthesis) speechSynthesis.onvoiceschanged = loadVoices;

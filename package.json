@@ -1,0 +1,12 @@
+{
+  "name": "bol-emergency-triage",
+  "version": "1.0.0",
+  "description": "BOL — multilingual AI triage layer for emergency dispatch (PromptWars entry)",
+  "private": true,
+  "scripts": {
+    "test": "node validate.js",
+    "start": "python3 -m http.server 8080"
+  },
+  "keywords": ["gemini", "emergency-response", "triage", "multilingual", "ai-for-good"],
+  "license": "MIT"
+}
