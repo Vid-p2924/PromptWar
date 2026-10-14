@@ -109,6 +109,12 @@ function toast(msg, ok) {
   clearTimeout(toast.t);
   toast.t = setTimeout(() => (el.toast.hidden = true), 4200);
 }
+function readableErr(m) {
+  if (/Failed to fetch|NetworkError/i.test(m)) return "can't reach the Gemini API — check your internet or proxy, then retry.";
+  const i = String(m).indexOf("{");
+  if (i === -1) return m;
+  try { const j = JSON.parse(String(m).slice(i)); return (j.error && j.error.message) || m; } catch (_) { return m; }
+}
 function short(text, n) {
   const t = (text || "").replace(/\s+/g, " ").trim();
   return t.length > n ? t.slice(0, n - 1) + "…" : t;
@@ -257,7 +263,7 @@ async function dispatch() {
       toast("Demo mode has no record of that call. Add a Gemini key for live triage, or pick a scripted call.");
     }
   } catch (e) {
-    toast("Dispatch failed: " + e.message);
+    toast("Dispatch failed: " + readableErr(e.message));
     if (fixture) {
       render(fixture.out, { source: "RECORDED", latency: fixture.latency_ms });
       toast("Fell back to the recorded card for '" + fixture.chip + "'.");
@@ -310,8 +316,35 @@ function setupMic() {
     selectedFixture = null;
     [...el.chips.children].forEach((c) => c.classList.remove("active"));
   };
-  rec.onerror = (e) => toast("Mic error: " + e.error + (e.error === "not-allowed" ? " — allow microphone access." : ""));
-  rec.onend = () => el.mic.classList.remove("on");
+  let retryLang = null;
+  const MIC_MSG = {
+    "not-allowed": "Microphone blocked — allow mic access from the address bar, then try again.",
+    "service-not-allowed": "Speech blocked by this browser — paste the transcript instead.",
+    "no-speech": "Didn't catch anything — try again closer to the mic.",
+    "audio-capture": "No microphone found — paste the transcript instead.",
+    "network": "Speech service unreachable — check your connection, or paste the transcript.",
+    "language-not-supported": "Voice input for that language isn't available in this browser — paste the transcript instead.",
+    "aborted": ""
+  };
+  rec.onerror = (e) => {
+    if (e.error === "language-not-supported" && rec.lang !== "en-IN" && rec.lang !== "en-US") {
+      retryLang = "en-IN";
+      toast("Voice input for " + rec.lang + " isn't available in this browser — retrying in English.");
+      return;
+    }
+    const m = MIC_MSG[e.error] || "";
+    if (m) toast(m);
+  };
+  rec.onend = () => {
+    el.mic.classList.remove("on");
+    if (retryLang) {
+      const l = retryLang;
+      retryLang = null;
+      rec.lang = l;
+      el.speechLang.value = l;
+      try { rec.start(); toast("Listening in " + l + " — speak the call.", true); } catch (_) {}
+    }
+  };
   el.mic.onclick = () => {
     if (el.mic.classList.contains("on")) { rec.stop(); return; }
     rec.lang = el.speechLang.value;
@@ -330,6 +363,7 @@ function speakAid() {
   const u = new SpeechSynthesisUtterance(text);
   u.lang = code;
   u.rate = 0.98;
+  u.onerror = (ev) => { if (ev.error !== "interrupted" && ev.error !== "canceled") toast("Read-aloud failed — this device has no " + code + " voice. English text is shown below each step."); };
   const voices = speechSynthesis.getVoices();
   const v = voices.find((x) => x.lang === code) || voices.find((x) => x.lang && x.lang.startsWith(code.split("-")[0]));
   if (v) u.voice = v;
