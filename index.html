@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BOL — Multilingual AI Triage for Emergency Dispatch</title>
+<meta name="description" content="BOL turns a panicked, multilingual emergency call into a dispatch-ready triage card in under 3 seconds." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="dot" id="modeDot"></span>
+    <span class="logo">BOL</span>
+    <span class="tag">first 60 seconds · AI triage layer</span>
+  </div>
+  <nav class="topnav">
+    <span class="badge" id="modeBadge">DEMO MODE</span>
+    <a class="ghost" href="#how">How it works</a>
+    <button class="ghost" id="openSettings">API key</button>
+  </nav>
+</header>
+
+<section class="hero">
+  <p class="kicker">PromptWar · Emergency Response</p>
+  <h1>People don't die because ambulances are slow.<br /><span class="hl">They die because information gets lost.</span></h1>
+  <p class="sub">
+    BOL listens to a panicked call in any language or dialect and returns a dispatch-ready
+    triage card — incident, severity, landmark location, hazards, first aid in the caller's own tongue —
+    in under 3 seconds.
+  </p>
+  <div class="stats">
+    <div class="stat"><b>121</b><span>languages, one helpline</span></div>
+    <div class="stat"><b>&lt;3s</b><span>call to card</span></div>
+    <div class="stat"><b>4</b><span>facts an operator needs</span></div>
+    <div class="stat"><b>0</b><span>apps required by caller</span></div>
+  </div>
+</section>
+
+<section class="console">
+  <div class="panel caller">
+    <div class="panel-head">
+      <span class="label">CALLER TRANSCRIPT</span>
+      <div class="rec">
+        <button id="micBtn" class="mic" title="Speak the call">●</button>
+        <select id="speechLang" title="Caller language">
+          <option value="te-IN">తెలుగు · te</option>
+          <option value="hi-IN">हिन्दी · hi</option>
+          <option value="en-IN" selected>English · en</option>
+          <option value="ta-IN">தமிழ் · ta</option>
+          <option value="bn-IN">বাংলা · bn</option>
+          <option value="kn-IN">ಕನ್ನಡ · kn</option>
+          <option value="ml-IN">മലയാളം · ml</option>
+          <option value="mr-IN">मराठी · mr</option>
+          <option value="gu-IN">ગુજરાતી · gu</option>
+          <option value="pa-IN">ਪੰਜਾਬੀ · pa</option>
+          <option value="ur-IN">اردو · ur</option>
+        </select>
+      </div>
+    </div>
+
+    <textarea id="transcript" spellcheck="false" placeholder="Paste or speak the raw emergency call. Code-mixed, fragmented, panicked — that is the point."></textarea>
+
+    <div class="scripted">
+      <span class="label">SCRIPTED CALLS</span>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="actions">
+      <button id="dispatchBtn" class="primary">DISPATCH ▸</button>
+      <button id="reelBtn" class="secondary">▶ Run demo reel</button>
+      <button id="clearBtn" class="ghostbtn">clear</button>
+    </div>
+    <p class="hint" id="hint">No key? Demo mode replays recorded dispatches. Add a Gemini key for live triage.</p>
+  </div>
+
+  <div class="panel output">
+    <div class="panel-head">
+      <span class="label">DISPATCH CARD</span>
+      <span class="meta" id="cardMeta">—</span>
+    </div>
+
+    <div id="emptyState" class="empty">
+      <div class="cross">+</div>
+      <p>AWAITING CALL</p>
+      <span>select a scripted call or press the mic</span>
+    </div>
+
+    <div id="card" class="card" hidden>
+      <div class="sev" id="sevBanner">
+        <span class="sevDot"></span>
+        <span id="sevText">CRITICAL</span>
+        <span class="sevType" id="incidentType">—</span>
+      </div>
+
+      <h2 class="headline" id="headline">—</h2>
+
+      <div class="grid2">
+        <div class="cell">
+          <span class="label">LOCATION</span>
+          <p id="location">—</p>
+          <span class="chip" id="locConf">—</span>
+        </div>
+        <div class="cell">
+          <span class="label">CASUALTIES</span>
+          <p id="casualties">—</p>
+          <span class="chip" id="langChip">—</span>
+        </div>
+      </div>
+
+      <div class="cell">
+        <span class="label">HAZARDS</span>
+        <ul class="hazards" id="hazards"></ul>
+      </div>
+
+      <div class="cell">
+        <span class="label">FIRST AID · <span id="aidLang">caller's language</span></span>
+        <ol class="aid" id="firstAid"></ol>
+        <button class="mini" id="speakAid">▶ Read aloud in caller's language</button>
+      </div>
+
+      <div class="cell">
+        <span class="label">OPERATOR HANDOFF</span>
+        <ol class="ops" id="operatorActions"></ol>
+        <button class="mini" id="copyBtn">⧉ Copy handoff</button>
+      </div>
+
+      <div class="cell">
+        <span class="label">ASK THE CALLER</span>
+        <ul class="qs" id="questions"></ul>
+      </div>
+
+      <div class="cardfoot">
+        <div class="conf">
+          <span class="label">CONFIDENCE</span>
+          <div class="bar"><i id="confFill"></i></div>
+          <b id="confVal">—</b>
+        </div>
+        <div class="footmeta" id="footMeta">—</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <div class="section-head">
+    <span class="label">ARCHITECTURE</span>
+    <h2>Four steps between the scream and the siren</h2>
+  </div>
+  <div class="steps">
+    <div class="step"><b>01</b><h3>Hear</h3><p>Browser speech capture or raw transcript — no app, no account, no GPS. The caller speaks however they speak.</p></div>
+    <div class="step"><b>02</b><h3>Understand</h3><p>Gemini 2.5 Flash runs one engineered triage prompt: language ID → normalisation → severity rubric → landmark geolocation → hazard extraction.</p></div>
+    <div class="step"><b>03</b><h3>Structure</h3><p>Strict JSON schema output. No free text, no hallucinated coordinates — every field is grounded in the transcript or marked UNKNOWN.</p></div>
+    <div class="step"><b>04</b><h3>Act</h3><p>Card renders for the operator, first aid reads aloud in the caller's own language, handoff copies straight into dispatch.</p></div>
+  </div>
+</section>
+
+<footer>
+  <div>
+    <span class="logo">BOL</span>
+    <p>Built for PromptWar. Solo entry. Emergency-response track.</p>
+  </div>
+  <div class="fmeta">
+    <span>gemini-2.5-flash</span><span>web speech api</span><span>static site · no backend</span>
+  </div>
+</footer>
+
+<div class="modal" id="settings" hidden>
+  <div class="sheet">
+    <div class="panel-head"><span class="label">GEMINI API KEY</span><button class="ghost" id="closeSettings">✕</button></div>
+    <p class="sub2">Stored in <code>sessionStorage</code> only — never committed, never sent anywhere except Google's API. Get a free key at
+      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.</p>
+    <input type="password" id="keyInput" placeholder="AIza..." autocomplete="off" />
+    <div class="actions">
+      <button class="primary" id="saveKey">Save key</button>
+      <button class="ghostbtn" id="clearKey">Remove</button>
+    </div>
+    <p class="hint" id="keyStatus"></p>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="fixtures.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
